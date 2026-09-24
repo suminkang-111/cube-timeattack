@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="3×3 큐브를 섞고, 직접 돌려 맞추고, 시간을 재는 게임. 자동 완성, 힌트, 난이도별 AI 대전.">
+<style>html{color-scheme:light dark}body{margin:0}</style>
+<title>큐브 타임어택</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root{
+  --ground:#E6E9ED;
+  --surface:#F7F8FA;
+  --surface-2:#ECEFF3;
+  --stage-a:#FBFCFD;
+  --stage-b:#D6DCE3;
+  --ink:#13161B;
+  --ink-2:#545D68;
+  --ink-3:#8A929C;
+  --line:#D1D6DD;
+  --btn:#13161B;
+  --btn-ink:#F7F8FA;
+  --lcd:#13161B;
+  --lcd-ink:#F2F4F7;
+  --lcd-dim:#7C8591;
+  --veil:rgba(230,233,237,.62);
+  --focus:#0A4FBF;
+  --win:#00843D;
+  --lose:#B8102C;
+  --warn:#B86E00;
+  --c-u:#F4F5F7; --c-d:#FFD200; --c-f:#00A651; --c-b:#0A4FBF; --c-r:#C8102E; --c-l:#FF6A13;
+  --shadow:0 1px 0 rgba(19,22,27,.04), 0 10px 28px -16px rgba(19,22,27,.28);
+  --shadow-lg:0 24px 60px -20px rgba(19,22,27,.35);
+  --f-display:"Black Han Sans","IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,"SFMono-Regular",monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0E1115; --surface:#171B21; --surface-2:#1F242B; --stage-a:#262C35; --stage-b:#0B0D10;
+    --ink:#ECEFF3; --ink-2:#A2ABB6; --ink-3:#6C7580; --line:#2A3038;
+    --btn:#ECEFF3; --btn-ink:#0E1115; --lcd:#06080A; --lcd-ink:#ECEFF3; --lcd-dim:#4E5661;
+    --veil:rgba(14,17,21,.66); --focus:#6E9BFF; --win:#35C978; --lose:#FF5D72; --warn:#F2A541;
+    --shadow:0 1px 0 rgba(0,0,0,.35), 0 12px 30px -16px rgba(0,0,0,.7);
+    --shadow-lg:0 24px 60px -20px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0E1115; --surface:#171B21; --surface-2:#1F242B; --stage-a:#262C35; --stage-b:#0B0D10;
+  --ink:#ECEFF3; --ink-2:#A2ABB6; --ink-3:#6C7580; --line:#2A3038;
+  --btn:#ECEFF3; --btn-ink:#0E1115; --lcd:#06080A; --lcd-ink:#ECEFF3; --lcd-dim:#4E5661;
+  --veil:rgba(14,17,21,.66); --focus:#6E9BFF; --win:#35C978; --lose:#FF5D72; --warn:#F2A541;
+  --shadow:0 1px 0 rgba(0,0,0,.35), 0 12px 30px -16px rgba(0,0,0,.7);
+  --shadow-lg:0 24px 60px -20px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+body{background:var(--ground); color:var(--ink); font-family:var(--f-body); font-size:14px; line-height:1.5; word-break:keep-all; -webkit-font-smoothing:antialiased}
+button{font:inherit; color:inherit; touch-action:manipulation}
+kbd{font-family:var(--f-mono); font-size:11.5px; padding:1px 6px; border-radius:5px; border:1px solid var(--line); border-bottom-width:2px; background:var(--surface); color:var(--ink)}
+
+.app{max-width:1280px; margin:0 auto; padding-inline:clamp(16px,3vw,32px); padding-block:20px 48px}
+.app[data-mode="solo"] .battle-only{display:none !important}
+.app[data-mode="battle"] .solo-only{display:none !important}
+
+/* header */
+.top{display:flex; justify-content:space-between; align-items:center; gap:14px 20px; flex-wrap:wrap; margin-bottom:18px}
+.brand{display:flex; align-items:center; gap:12px; min-width:0}
+.glyph{display:grid; grid-template-columns:repeat(3,11px); gap:2px; padding:3px; background:#121417; border-radius:6px; flex:none}
+.glyph i{width:11px; height:11px; border-radius:2.5px; background:var(--c)}
+h1{font-family:var(--f-display); font-weight:400; font-size:clamp(24px,3vw,30px); line-height:1.1; margin:0; letter-spacing:-.01em}
+.sub{margin:2px 0 0; color:var(--ink-2); font-size:13px}
+
+.seg{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:3px; padding:3px; background:var(--surface-2); border:1px solid var(--line); border-radius:12px}
+.seg button{border:0; background:transparent; border-radius:9px; padding:8px 14px; cursor:pointer; color:var(--ink-2); font-weight:600; line-height:1.25; display:grid; justify-items:center; gap:1px}
+.seg button small{font-family:var(--f-mono); font-size:11px; font-weight:500; color:var(--ink-3)}
+.seg button[aria-selected="true"], .seg button[aria-checked="true"]{background:var(--surface); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.08), 0 0 0 1px var(--line)}
+.seg button[aria-checked="true"] small{color:var(--ink-2)}
+.seg button:disabled{cursor:not-allowed; opacity:.5}
+.tabs button{padding:9px 18px; font-size:14px}
+
+/* layout */
+.layout{display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:20px; align-items:start}
+.play{display:grid; gap:14px; min-width:0}
+
+/* clock */
+.clock{display:grid; grid-template-columns:auto minmax(0,1fr) auto; grid-template-areas:"lcd meta act"; align-items:center; gap:12px 16px}
+.lcd{grid-area:lcd; position:relative; --tone:var(--lcd-dim); background:var(--lcd); color:var(--lcd-ink); border-radius:14px; padding:12px 20px 10px 34px; font-family:var(--f-mono); font-weight:700; font-size:clamp(40px,6vw,62px); line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums; text-align:right; min-width:calc(4.4em + 54px); box-shadow:inset 0 0 0 1px rgba(255,255,255,.06), inset 0 -14px 26px rgba(0,0,0,.28)}
+.lcd::before{content:""; position:absolute; left:14px; top:50%; width:9px; height:9px; margin-top:-4.5px; border-radius:50%; background:var(--tone); box-shadow:0 0 10px var(--tone)}
+.lcd .ghost{position:absolute; right:20px; top:12px; color:var(--lcd-dim); opacity:.3; pointer-events:none}
+.lcd .digits{position:relative}
+.clock-meta{grid-area:meta; display:grid; gap:8px; min-width:0}
+.status-line{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.status{--tone:var(--ink-3); display:inline-flex; align-items:center; gap:7px; padding:4px 11px 4px 9px; border-radius:99px; font-size:12.5px; font-weight:600; background:var(--surface); border:1px solid var(--line); white-space:nowrap}
+.status::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--tone)}
+.status-text{color:var(--ink-2); font-size:13.5px}
+[data-tone="ready"],[data-tone="busy"]{--tone:var(--warn)}
+[data-tone="running"],[data-tone="win"]{--tone:var(--win)}
+[data-tone="solving"]{--tone:var(--focus)}
+[data-tone="done"]{--tone:var(--ink)}
+[data-tone="lose"]{--tone:var(--lose)}
+[data-tone="free"]{--tone:var(--ink-2)}
+.lcd[data-tone="done"]{--tone:var(--lcd-ink)}
+.lcd[data-tone="idle"],.lcd[data-tone="free"]{--tone:var(--lcd-dim)}
+.status[data-tone="running"]::before,.lcd[data-tone="running"]::before{animation:blink 1.1s ease-in-out infinite}
+@keyframes blink{50%{opacity:.25}}
+.trail{display:flex; flex-wrap:wrap; gap:4px; min-height:24px; font-family:var(--f-mono); font-size:12.5px}
+.trail span{padding:2px 7px; border-radius:6px; background:var(--surface-2); color:var(--ink-2)}
+.trail span.last{background:var(--ink); color:var(--ground)}
+.trail:empty::before{content:"회전하면 기호(R, U′ …)가 여기에 쌓여요"; color:var(--ink-3); font-family:var(--f-body); font-size:12.5px; line-height:24px}
+.act{grid-area:act}
+
+/* buttons */
+.btn{display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:10px 18px; border-radius:11px; border:1px solid var(--line); background:var(--surface); color:var(--ink); font-weight:600; font-size:14.5px; cursor:pointer; transition:transform .08s, background .15s, border-color .15s; white-space:nowrap}
+.btn:hover{border-color:var(--ink-3)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--btn); color:var(--btn-ink); border-color:transparent}
+.btn.primary:hover{opacity:.9}
+.btn.danger{background:transparent; color:var(--lose); border-color:var(--lose)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.42; cursor:not-allowed; transform:none}
+.act{min-height:52px; padding-inline:24px; font-size:16px}
+:where(button,summary):focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+
+/* stages */
+.stages{position:relative; display:grid; grid-template-columns:minmax(0,1fr); gap:14px}
+.app[data-mode="battle"] .stages{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)}
+.stage{margin:0; position:relative; display:flex; flex-direction:column; border-radius:18px; overflow:hidden; border:1px solid var(--line); background:radial-gradient(110% 85% at 50% 38%, var(--stage-a) 0%, var(--stage-b) 100%); box-shadow:var(--shadow)}
+.canvas-host{position:relative; height:clamp(300px,54vh,560px)}
+.app[data-mode="battle"] .canvas-host{height:clamp(260px,46vh,470px)}
+.canvas-host canvas{position:absolute; inset:0; width:100%; height:100%; display:block; cursor:grab; touch-action:none; outline:none}
+.canvas-host canvas:active{cursor:grabbing}
+.stage-head{position:absolute; z-index:2; top:12px; left:14px; right:12px; display:flex; align-items:center; gap:8px; pointer-events:none}
+.who{font-family:var(--f-display); font-size:19px; line-height:1}
+.who em{font-style:normal; font-family:var(--f-body); font-weight:600; font-size:12.5px; color:var(--ink-2); margin-left:4px}
+.ai-state{font-size:12px; font-weight:600; padding:3px 9px; border-radius:99px; background:var(--surface); border:1px solid var(--line); color:var(--ink-2)}
+.ai-state.win{color:var(--win); border-color:var(--win)}
+.view-reset{pointer-events:auto; margin-left:auto; width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); display:grid; place-items:center; cursor:pointer}
+.view-reset:hover{color:var(--ink)}
+.view-pad{position:absolute; right:12px; bottom:12px; z-index:2; display:grid; grid-template-columns:repeat(3,34px); grid-auto-rows:34px; gap:4px}
+.view-pad button{display:grid; place-items:center; padding:0; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,.06); transition:transform .06s}
+.view-pad button:hover{color:var(--ink); border-color:var(--ink-3)}
+.view-pad button:active{transform:scale(.93)}
+.view-pad .home{background:var(--surface-2)}
+.view-pad svg{width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round}
+.stage-foot{display:flex; align-items:center; gap:12px; padding:10px 14px; border-top:1px solid var(--line); background:var(--surface); font-size:12.5px; color:var(--ink-2)}
+.stage-foot b{font-family:var(--f-mono); color:var(--ink); font-weight:700; font-variant-numeric:tabular-nums}
+.bar{flex:1; height:6px; border-radius:99px; background:var(--surface-2); overflow:hidden; box-shadow:inset 0 0 0 1px var(--line)}
+.bar i{display:block; height:100%; width:100%; border-radius:99px; background:linear-gradient(90deg,var(--c-r) 0 16.6%,var(--c-l) 0 33.3%,var(--c-d) 0 50%,var(--c-f) 0 66.6%,var(--c-b) 0 83.3%,var(--ink-3) 0); background-size:var(--full,100%) 100%; transition:width .25s ease}
+.countdown{position:absolute; inset:0; z-index:5; display:grid; place-items:center; background:var(--veil); border-radius:18px; font-family:var(--f-display); font-size:clamp(80px,14vw,170px); line-height:1; color:var(--ink); pointer-events:none}
+.countdown.pop{animation:pop .5s cubic-bezier(.2,1.4,.4,1)}
+@keyframes pop{from{transform:scale(1.35); opacity:.2}to{transform:scale(1); opacity:1}}
+
+/* move pad */
+.pad{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:6px; width:100%; max-width:640px; margin-inline:auto}
+.pad button{position:relative; height:50px; border-radius:11px; border:1px solid var(--line); background:var(--surface); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; font-family:var(--f-mono); font-weight:700; font-size:17px; color:var(--ink); transition:transform .06s, border-color .15s}
+.pad button:hover{border-color:var(--ink-3)}
+.pad button:active{transform:translateY(1px) scale(.98)}
+.pad .chip{width:13px; height:13px; border-radius:3.5px; background:var(--chip,var(--ink-3)); box-shadow:inset 0 0 0 1px rgba(0,0,0,.22)}
+.pad button.hinted{border-color:var(--focus); box-shadow:0 0 0 2px var(--focus); animation:nudge .8s ease-in-out 3}
+@keyframes nudge{50%{transform:translateY(-3px)}}
+.help{margin:0; text-align:center; color:var(--ink-2); font-size:12.5px; line-height:2}
+
+/* panel */
+.panel{position:sticky; top:calc(env(safe-area-inset-top,0px) + 16px); display:grid; gap:0; background:var(--surface); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow)}
+.sec{padding:18px 20px; border-top:1px solid var(--line)}
+.panel > .sec:first-child, .panel > .sec.first{border-top:0}
+.app[data-mode="solo"] .panel > .battle-only + .sec{border-top:0}
+.sec h2{margin:0 0 10px; font-size:13px; font-weight:600; color:var(--ink-2); letter-spacing:.02em}
+.sec h3{margin:16px 0 6px; font-size:12.5px; font-weight:600; color:var(--ink-2)}
+.note{margin:10px 0 0; color:var(--ink-2); font-size:12.5px; line-height:1.6}
+.levels button{padding:8px 4px}
+
+.diffs{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px}
+.diff{display:grid; gap:3px; text-align:left; padding:11px 12px; border-radius:12px; border:1px solid var(--line); background:var(--surface); cursor:pointer}
+.diff:hover{border-color:var(--ink-3)}
+.diff[aria-checked="true"]{border-color:var(--ink); box-shadow:inset 0 0 0 1px var(--ink)}
+.diff:disabled{cursor:not-allowed; opacity:.55}
+.diff b{font-size:15px}
+.diff small{font-size:12px; color:var(--ink-2); line-height:1.4}
+.diff .wl{font-style:normal; font-family:var(--f-mono); font-size:11.5px; color:var(--ink-3); margin-top:2px}
+.meter{display:flex; gap:3px; margin-bottom:3px}
+.meter i{width:14px; height:4px; border-radius:2px; background:var(--line)}
+.meter i.on{background:var(--ink)}
+
+.tools{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.tools .btn:first-child{grid-column:1 / -1}
+.scramble{margin-top:12px; font-size:13px}
+.scramble summary{cursor:pointer; color:var(--ink-2); font-weight:500; border-radius:6px}
+.scramble code{display:block; margin-top:8px; padding:10px 12px; border-radius:10px; background:var(--surface-2); font-family:var(--f-mono); font-size:13px; line-height:1.7; word-break:break-word; color:var(--ink)}
+
+.bests{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:0}
+.best{padding:10px 12px; border-radius:11px; background:var(--surface-2)}
+.best.on{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.best dt{font-size:12px; color:var(--ink-2)}
+.best dt span{font-family:var(--f-mono); color:var(--ink-3); margin-left:3px}
+.best dd{margin:2px 0 0; font-family:var(--f-mono); font-weight:700; font-size:19px; font-variant-numeric:tabular-nums}
+.ao5{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin:12px 0 0; font-size:12.5px; color:var(--ink-2)}
+.ao5 b{font-family:var(--f-mono); color:var(--ink); font-size:13.5px; text-align:right}
+.recent{list-style:none; margin:0; padding:0; display:grid}
+.recent li{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:7px 0; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-2)}
+.recent li:first-child{border-top:0}
+.recent li b{font-family:var(--f-mono); font-size:14px; color:var(--ink); font-variant-numeric:tabular-nums}
+.recent li.empty{display:block; color:var(--ink-3); line-height:1.6}
+.recent li .tagh{color:var(--warn)}
+
+/* toast + result */
+.toast{position:fixed; left:50%; bottom:calc(24px + env(safe-area-inset-bottom,0px)); z-index:60; max-width:calc(100% - 32px); transform:translate(-50%,14px); opacity:0; pointer-events:none; padding:11px 18px; border-radius:12px; background:var(--btn); color:var(--btn-ink); font-size:14px; font-weight:500; text-align:center; box-shadow:var(--shadow-lg); transition:opacity .2s, transform .2s}
+.toast.show{opacity:1; transform:translate(-50%,0)}
+.result{position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:24px 16px; background:var(--veil); -webkit-backdrop-filter:blur(5px); backdrop-filter:blur(5px)}
+.result-card{width:min(420px,100%); padding:26px 24px 22px; border-radius:20px; background:var(--surface); border:1px solid var(--line); box-shadow:var(--shadow-lg); animation:rise .35s ease-out}
+@keyframes rise{from{transform:translateY(14px); opacity:0}}
+.eyebrow{margin:0; font-size:12.5px; color:var(--ink-2)}
+.result-card h2{margin:6px 0 0; font-family:var(--f-display); font-weight:400; font-size:40px; line-height:1.1; color:var(--tone,var(--ink))}
+.res-time{margin:12px 0 18px; font-family:var(--f-mono); font-weight:700; font-size:54px; line-height:1; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.res-rows{display:grid; grid-template-columns:1fr auto; gap:8px 16px; margin:0 0 22px; padding-top:14px; border-top:1px solid var(--line)}
+.res-rows dt{color:var(--ink-2)}
+.res-rows dd{margin:0; text-align:right; font-family:var(--f-mono); font-weight:500}
+.res-actions{display:grid; grid-template-columns:1fr auto; gap:8px}
+.fail{display:grid; place-items:center; min-height:320px; padding:24px; text-align:center; color:var(--ink-2); border:1px dashed var(--line); border-radius:18px}
+
+@media (max-width:980px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .panel{position:static}
+}
+@media (max-width:620px){
+  .clock{grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"lcd act" "meta meta"}
+  .lcd{font-size:40px; min-width:0; padding:11px 16px 9px 30px}
+  .lcd::before{left:12px}
+  .lcd .ghost{right:16px; top:11px}
+  .act{padding-inline:16px; font-size:15px}
+  .app[data-mode="battle"] .stages{grid-template-columns:minmax(0,1fr)}
+  .app[data-mode="battle"] #stage-ai{order:-1}
+  .app[data-mode="battle"] #stage-ai .canvas-host{height:180px}
+  .app[data-mode="battle"] #stage-me .canvas-host{height:340px}
+  .canvas-host{height:360px}
+  .view-pad{grid-template-columns:repeat(3,30px); grid-auto-rows:30px; gap:3px; right:8px; bottom:8px}
+  .pad button{height:48px; font-size:15px; gap:5px}
+  .pad .chip{width:11px; height:11px}
+  .tabs button{padding:8px 14px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none !important; transition:none !important}
+}
+</style>
+
+<div class="app" id="app" data-mode="solo">
+  <header class="top">
+    <div class="brand">
+      <span class="glyph" aria-hidden="true"><i style="--c:var(--c-r)"></i><i style="--c:var(--c-u)"></i><i style="--c:var(--c-f)"></i><i style="--c:var(--c-d)"></i><i style="--c:var(--c-b)"></i><i style="--c:var(--c-r)"></i><i style="--c:var(--c-l)"></i><i style="--c:var(--c-f)"></i><i style="--c:var(--c-u)"></i></span>
+      <div>
+        <h1>큐브 타임어택</h1>
+        <p class="sub">3×3 큐브를 섞고, 직접 돌려 맞추고, 시간을 재요</p>
+      </div>
+    </div>
+    <div class="seg tabs" role="tablist" aria-label="게임 모드">
+      <button type="button" role="tab" id="tab-solo" data-mode="solo" aria-selected="true">혼자 연습</button>
+      <button type="button" role="tab" id="tab-battle" data-mode="battle" aria-selected="false">AI 대전</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="play" aria-label="큐브와 타이머">
+      <div class="clock">
+        <div class="lcd" id="lcd" data-tone="idle">
+          <span class="ghost" id="ghost" aria-hidden="true">8.88</span>
+          <span class="digits" id="timer" role="timer">0.00</span>
+        </div>
+        <div class="clock-meta">
+          <div class="status-line">
+            <span class="status" id="status" data-tone="idle">대기</span>
+            <span class="status-text" id="statusText">섞기를 누르면 큐브가 무작위로 섞여요</span>
+          </div>
+          <div class="trail" id="trail" aria-label="최근 회전"></div>
+        </div>
+        <button type="button" class="btn primary act" id="primary">섞기</button>
+      </div>
+
+      <div class="stages" id="stages">
+        <figure class="stage" id="stage-me">
+          <div class="stage-head">
+            <span class="who battle-only">나</span>
+          </div>
+          <div class="canvas-host" id="host-me">
+            <div class="view-pad" id="viewPad" role="group" aria-label="시점 돌리기">
+              <button type="button" data-turn="z-1" title="반시계 방향으로 눕히기 (Shift+Z)" aria-label="반시계 방향으로 눕히기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7"/><path d="M4.4 1.8v2.7h2.7"/></svg></button>
+              <button type="button" data-turn="x1" title="위로 굴리기 (↑)" aria-label="위로 굴리기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13V3M4 7l4-4 4 4"/></svg></button>
+              <button type="button" data-turn="z1" title="시계 방향으로 눕히기 (Z)" aria-label="시계 방향으로 눕히기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M11.6 1.8v2.7H8.9"/></svg></button>
+              <button type="button" data-turn="y1" title="왼쪽으로 돌리기 (←)" aria-label="왼쪽으로 돌리기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3M7 4L3 8l4 4"/></svg></button>
+              <button type="button" class="home" data-turn="reset" title="기본 시점 (V)" aria-label="기본 시점으로"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.2L8 3.8l5 4.4M4.8 7v5.4h6.4V7"/></svg></button>
+              <button type="button" data-turn="y-1" title="오른쪽으로 돌리기 (→)" aria-label="오른쪽으로 돌리기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4"/></svg></button>
+              <span></span>
+              <button type="button" data-turn="x-1" title="아래로 굴리기 (↓)" aria-label="아래로 굴리기"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M4 9l4 4 4-4"/></svg></button>
+              <span></span>
+            </div>
+          </div>
+          <figcaption class="stage-foot">
+            <span>회전 <b id="meMoves">0</b></span>
+            <span class="bar" aria-hidden="true"><i id="meBar"></i></span>
+            <span>완성도 <b id="mePct">100%</b></span>
+          </figcaption>
+        </figure>
+        <figure class="stage battle-only" id="stage-ai">
+          <div class="stage-head">
+            <span class="who">AI<em id="aiLabel">보통</em></span>
+            <span class="ai-state" id="aiState">대기</span>
+            <button type="button" class="view-reset" data-view="ai" title="시점 초기화" aria-label="AI 큐브 시점 초기화">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.6-3.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4.4 1.8v2.7h2.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="canvas-host" id="host-ai"></div>
+          <figcaption class="stage-foot">
+            <span>회전 <b id="aiMoves">0</b></span>
+            <span class="bar" aria-hidden="true"><i id="aiBar"></i></span>
+            <span>완성도 <b id="aiPct">100%</b></span>
+          </figcaption>
+        </figure>
+        <div class="countdown" id="countdown" aria-live="assertive" hidden></div>
+      </div>
+
+      <div class="pad" id="pad" role="group" aria-label="회전 버튼"></div>
+      <p class="help">스티커를 끌면 그 줄이 돌아가요. 빈 곳을 끌거나 <b>마우스 오른쪽 버튼</b>으로 끌면 어느 방향으로든 시점이 돌아가요.<br>
+        시점 <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> · 눕히기 <kbd>Z</kbd> · 큐브 기호 <kbd>X</kbd> <kbd>Y</kbd> <kbd>Z</kbd> · 기본 시점 <kbd>V</kbd><br>
+        회전 <kbd>U</kbd> <kbd>D</kbd> <kbd>L</kbd> <kbd>R</kbd> <kbd>F</kbd> <kbd>B</kbd> · 가운데 줄 <kbd>M</kbd> <kbd>E</kbd> <kbd>S</kbd> · <kbd>Shift</kbd>+키 = 반대 방향 · 면 이름은 지금 화면 기준(위·앞·오른쪽)</p>
+    </section>
+
+    <aside class="panel" aria-label="설정과 기록">
+      <section class="sec battle-only">
+        <h2>AI 난이도</h2>
+        <div class="diffs" id="diffs" role="radiogroup" aria-label="AI 난이도"></div>
+      </section>
+      <section class="sec">
+        <h2>섞기 강도</h2>
+        <div class="seg levels" id="levels" role="radiogroup" aria-label="섞기 강도"></div>
+        <p class="note solo-only">무작위로 돌리는 횟수예요. 25회면 대회 규정처럼 완전히 섞여요.</p>
+        <p class="note battle-only">두 큐브를 똑같이 섞고 3초 카운트다운 뒤 동시에 출발해요. 먼저 완성하는 쪽이 이겨요.</p>
+      </section>
+      <section class="sec solo-only">
+        <h2>도움</h2>
+        <div class="tools">
+          <button type="button" class="btn" id="btnSolve">완성시키기</button>
+          <button type="button" class="btn" id="btnHint">힌트 (다음 한 수)</button>
+          <button type="button" class="btn ghost" id="btnReset">초기화</button>
+        </div>
+        <p class="note">완성시키기나 힌트를 쓰면 그 풀이는 최고 기록에 올라가지 않아요.</p>
+        <details class="scramble" id="scrambleBox">
+          <summary>섞은 순서 보기 (기본 시점 기준)</summary>
+          <code id="scrambleText">아직 섞지 않았어요</code>
+        </details>
+      </section>
+      <section class="sec solo-only">
+        <h2>개인 최고 기록</h2>
+        <dl class="bests" id="bests"></dl>
+        <p class="ao5"><span id="ao5Label">최근 5회 평균 (ao5)</span><b id="ao5">—</b></p>
+        <h3>최근 풀이</h3>
+        <ol class="recent" id="recent"></ol>
+      </section>
+      <section class="sec battle-only">
+        <h2>AI는 이렇게 풀어요</h2>
+        <p class="note" style="margin-top:0">AI는 섞인 순서를 거꾸로 되짚어 맞춰요. 난이도가 낮을수록 손이 느리고, 방향을 헷갈리거나 한참 고민하는 일이 잦아요.</p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="result" id="result" hidden>
+  <div class="result-card" role="dialog" aria-modal="true" aria-labelledby="resTitle">
+    <p class="eyebrow" id="resEyebrow"></p>
+    <h2 id="resTitle"></h2>
+    <p class="res-time" id="resTime"></p>
+    <dl class="res-rows" id="resRows"></dl>
+    <div class="res-actions">
+      <button type="button" class="btn primary" id="resPrimary">다시 섞기</button>
+      <button type="button" class="btn ghost" id="resClose">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const now = () => performance.now();
+const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/* ───────── notation ─────────
+   A move is {axis, layer, amt}: amt = quarter turns counter-clockwise about the +axis (1,2,3). */
+const NAMES = {'x1':'R','x-1':'L','x0':'M','y1':'U','y-1':'D','y0':'E','z1':'F','z-1':'B','z0':'S'};
+const CW = {'x1':3,'x-1':1,'x0':1,'y1':3,'y-1':1,'y0':1,'z1':3,'z-1':1,'z0':3};
+const KEY_OF = {}; for (const k in NAMES) KEY_OF[NAMES[k]] = k;
+const keyOf = m => m.axis + m.layer;
+const moveName = m => { const k = keyOf(m); return NAMES[k] + (m.amt === 2 ? '2' : m.amt === CW[k] ? '' : "'"); };
+function parseMove(s){
+  const k = KEY_OF[s[0]], cw = CW[k];
+  return {axis:k[0], layer:parseInt(k.slice(1), 10), amt: s[1] === '2' ? 2 : s[1] === "'" ? 4 - cw : cw};
+}
+const invert = m => ({axis:m.axis, layer:m.layer, amt:4 - m.amt});
+function pushSimplified(stack, m){
+  const top = stack[stack.length - 1];
+  if (top && top.axis === m.axis && top.layer === m.layer){
+    const a = (top.amt + m.amt) % 4;
+    if (a === 0) stack.pop(); else stack[stack.length - 1] = {axis:top.axis, layer:top.layer, amt:a};
+  } else stack.push({axis:m.axis, layer:m.layer, amt:m.amt});
+}
+const solutionFrom = seq => seq.slice().reverse().map(invert);
+const FACE_LIST = ['U','D','L','R','F','B'];
+function makeScramble(n){
+  const out = [];
+  while (out.length < n){
+    const m = parseMove(FACE_LIST[Math.random() * 6 | 0]);
+    const a = out[out.length - 1], b = out[out.length - 2];
+    if (a && keyOf(a) === keyOf(m)) continue;
+    if (a && b && a.axis === m.axis && keyOf(b) === keyOf(m)) continue;
+    const r = Math.random() * 3 | 0, cw = CW[keyOf(m)];
+    m.amt = r === 2 ? 2 : r === 0 ? cw : 4 - cw;
+    out.push(m);
+  }
+  return out;
+}
+function fmt(ms){
+  if (ms == null || !isFinite(ms)) return '—';
+  const cs = Math.floor(ms / 10), s = Math.floor(cs / 100), m = Math.floor(s / 60);
+  const c = String(cs % 100).padStart(2, '0');
+  return m ? `${m}:${String(s % 60).padStart(2, '0')}.${c}` : `${s}.${c}`;
+}
+const rand = (a, b) => a + Math.random() * (b - a);
+
+/* ───────── 3D cube view ───────── */
+const STICKER = {U:0xF4F5F7, D:0xFFD200, F:0x00A651, B:0x0A4FBF, R:0xC8102E, L:0xFF6A13};
+const NORMALS = {R:[1,0,0], L:[-1,0,0], U:[0,1,0], D:[0,-1,0], F:[0,0,1], B:[0,0,-1]};
+const AXES = ['x','y','z'];
+const DEFAULT_VIEW = {theta:0.62, phi:1.02};
+const VIEWS = [];
+function dirOf(v){
+  const ax = Math.abs(v.x), ay = Math.abs(v.y), az = Math.abs(v.z);
+  if (ax >= ay && ax >= az) return v.x > 0 ? 'R' : 'L';
+  if (ay >= az) return v.y > 0 ? 'U' : 'D';
+  return v.z > 0 ? 'F' : 'B';
+}
+function roundedRect(size, r){
+  const s = size / 2, sh = new THREE.Shape();
+  sh.moveTo(-s + r, -s); sh.lineTo(s - r, -s); sh.quadraticCurveTo(s, -s, s, -s + r);
+  sh.lineTo(s, s - r); sh.quadraticCurveTo(s, s, s - r, s);
+  sh.lineTo(-s + r, s); sh.quadraticCurveTo(-s, s, -s, s - r);
+  sh.lineTo(-s, -s + r); sh.quadraticCurveTo(-s, -s, -s + r, -s);
+  return new THREE.ShapeGeometry(sh, 5);
+}
+function snap(c){
+  c.position.set(Math.round(c.position.x), Math.round(c.position.y), Math.round(c.position.z));
+  const m = new THREE.Matrix4().makeRotationFromQuaternion(c.quaternion), e = m.elements;
+  for (const i of [0,1,2,4,5,6,8,9,10]) e[i] = Math.round(e[i]);
+  c.quaternion.setFromRotationMatrix(m);
+}
+
+/* view: camera orientation is a free quaternion (no angle limits) */
+function defaultViewQ(){
+  const {theta, phi} = DEFAULT_VIEW, s = Math.sin(phi);
+  const eye = new THREE.Vector3(s * Math.sin(theta), Math.cos(phi), s * Math.cos(theta));
+  const m = new THREE.Matrix4().lookAt(eye, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 1, 0));
+  return new THREE.Quaternion().setFromRotationMatrix(m);
+}
+function qAxis(axis, angle){ const v = new THREE.Vector3(); v[axis] = 1; return new THREE.Quaternion().setFromAxisAngle(v, angle); }
+/* Which world axis currently sits on screen-up / toward-viewer / screen-right, so U/F/R follow the screen. */
+function computeMap(q){
+  const back = new THREE.Vector3(0, 0, 1).applyQuaternion(q), up = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+  const dom = (v, skip) => { let b = null; for (const a of AXES){ if (a === skip) continue; if (b === null || Math.abs(v[a]) > Math.abs(v[b])) b = a; } return {axis:b, sign:v[b] >= 0 ? 1 : -1}; };
+  const F = dom(back), U = dom(up, F.axis);
+  const rAxis = AXES.find(a => a !== F.axis && a !== U.axis);
+  const uv = new THREE.Vector3(), fv = new THREE.Vector3();
+  uv[U.axis] = U.sign; fv[F.axis] = F.sign;
+  const rv = new THREE.Vector3().crossVectors(uv, fv);
+  const R = {axis:rAxis, sign:rv[rAxis] > 0 ? 1 : -1};
+  const neg = d => ({axis:d.axis, sign:-d.sign});
+  return {U, D:neg(U), F, B:neg(F), R, L:neg(R)};
+}
+const SLICE_REF = {M:'L', E:'D', S:'F'};
+function relToWorld(map, s){
+  const letter = s[0], suf = s[1] || '';
+  const ref = map[SLICE_REF[letter] || letter];
+  const cw = ref.sign > 0 ? 3 : 1;
+  return {axis:ref.axis, layer:SLICE_REF[letter] ? 0 : ref.sign, amt: suf === '2' ? 2 : suf === "'" ? 4 - cw : cw};
+}
+function worldToRel(map, m){
+  const letter = m.layer === 0
+    ? ['M','E','S'].find(k => map[SLICE_REF[k]].axis === m.axis)
+    : FACE_LIST.find(k => map[k].axis === m.axis && map[k].sign === m.layer);
+  if (!letter) return moveName(m);
+  const ref = map[SLICE_REF[letter] || letter], cw = ref.sign > 0 ? 3 : 1;
+  return letter + (m.amt === 2 ? '2' : m.amt === cw ? '' : "'");
+}
+
+class CubeView {
+  constructor(host, o){
+    this.host = host; this.o = o;
+    this.queue = []; this.active = null; this.history = []; this.idleCbs = [];
+    this.viewQ = defaultViewQ(); this.viewAnim = null; this.dist = 11;
+    this.map = null; this.mapSig = '';
+    this.spin = null; this.drag = null; this.dirty = true;
+    const r = this.renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    r.setClearColor(0x000000, 0);
+    this.canvas = r.domElement;
+    host.appendChild(this.canvas);
+    this.scene = new THREE.Scene();
+    this.camera = new THREE.PerspectiveCamera(30, 1, 1, 60);
+    this.scene.add(this.camera);
+    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x8a93a3, 0.78));
+    const key = new THREE.DirectionalLight(0xffffff, 0.72); key.position.set(3, 6, 4); this.camera.add(key);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.22); rim.position.set(-6, -3, -5); this.scene.add(rim);
+    this.root = new THREE.Group(); this.scene.add(this.root);
+    this.geo = {body:new THREE.BoxGeometry(0.98, 0.98, 0.98), sticker:roundedRect(0.84, 0.13)};
+    this.mat = {body:new THREE.MeshStandardMaterial({color:0x121417, roughness:0.65, metalness:0})};
+    for (const f in STICKER) this.mat[f] = new THREE.MeshStandardMaterial({color:STICKER[f], roughness:0.42, metalness:0});
+    this.ray = new THREE.Raycaster(); this.ndc = new THREE.Vector2();
+    this._build();
+    this._resize();
+    if ('ResizeObserver' in window){ this.ro = new ResizeObserver(() => this._resize()); this.ro.observe(host); }
+    else window.addEventListener('resize', () => this._resize());
+    this._bind();
+    VIEWS.push(this);
+  }
+  _build(){
+    this.cubies = []; this.stickers = []; this.bodies = [];
+    const Z = new THREE.Vector3(0, 0, 1);
+    for (let x = -1; x <= 1; x++) for (let y = -1; y <= 1; y++) for (let z = -1; z <= 1; z++){
+      if (!x && !y && !z) continue;
+      const g = new THREE.Group(); g.position.set(x, y, z);
+      const body = new THREE.Mesh(this.geo.body, this.mat.body);
+      g.add(body); this.bodies.push(body);
+      for (const f in NORMALS){
+        const n = NORMALS[f];
+        if (!((n[0] && x === n[0]) || (n[1] && y === n[1]) || (n[2] && z === n[2]))) continue;
+        const nv = new THREE.Vector3(n[0], n[1], n[2]);
+        const s = new THREE.Mesh(this.geo.sticker, this.mat[f]);
+        s.quaternion.setFromUnitVectors(Z, nv);
+        s.position.copy(nv).multiplyScalar(0.492);
+        s.userData = {face:f, normal:nv};
+        g.add(s); this.stickers.push(s);
+      }
+      this.root.add(g); this.cubies.push(g);
+    }
+    this.pickables = this.stickers.concat(this.bodies);
+  }
+  _resize(){
+    const w = this.host.clientWidth, h = this.host.clientHeight;
+    if (!w || !h) return;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    const vf = THREE.MathUtils.degToRad(this.camera.fov) / 2, hf = Math.atan(Math.tan(vf) * this.camera.aspect);
+    this.dist = 2.6 / Math.sin(Math.min(vf, hf));
+    this.camera.updateProjectionMatrix();
+    this._cam();
+    this.renderer.render(this.scene, this.camera);
+    this.dirty = false;
+  }
+  _cam(){
+    this.camera.quaternion.copy(this.viewQ);
+    this.camera.position.set(0, 0, this.dist).applyQuaternion(this.viewQ);
+    this.camera.updateMatrixWorld();
+    this.dirty = true;
+    const map = computeMap(this.spin ? this.spin.from : this.viewAnim ? this.viewAnim.to : this.viewQ);
+    const sig = FACE_LIST.map(f => map[f].axis + map[f].sign).join('');
+    this.map = map;
+    if (sig !== this.mapSig){ this.mapSig = sig; if (this.o.onViewMap) this.o.onViewMap(map); }
+  }
+  getMap(){ if (!this.map) this.map = computeMap(this.viewQ); return this.map; }
+  _settleView(){
+    if (this.spin){ this.viewQ.copy(this.spin.from); this.spin = null; }
+    if (this.viewAnim){ this.viewQ.copy(this.viewAnim.to); this.viewAnim = null; }
+  }
+  _animTo(to){
+    if (reduceMotion){ this.viewQ.copy(to); this.viewAnim = null; }
+    else this.viewAnim = {from:this.viewQ.clone(), to, t0:now(), dur:240};
+    this._cam();
+  }
+  /* whole-cube rotation in notation terms: turnView('x', 1) = x, ('y', -1) = y', ... relative to the screen */
+  turnView(axis, dir){
+    if (this.spin){ this.viewQ.copy(this.spin.from); this.spin = null; }
+    const base = this.viewAnim ? this.viewAnim.to : this.viewQ;
+    this._animTo(base.clone().multiply(qAxis(axis, dir * Math.PI / 2)).normalize());
+  }
+  resetView(){
+    if (this.spin){ this.viewQ.copy(this.spin.from); this.spin = null; }
+    this._animTo(defaultViewQ());
+  }
+  celebrate(){
+    if (reduceMotion) return;
+    this._settleView();
+    this.spin = {t0:now(), from:this.viewQ.clone(), dur:1400};
+  }
+  _bind(){
+    const c = this.canvas;
+    c.addEventListener('pointerdown', e => this._down(e));
+    c.addEventListener('pointermove', e => this._move(e));
+    const up = e => { if (this.drag && e.pointerId === this.drag.id) this.drag = null; };
+    c.addEventListener('pointerup', up);
+    c.addEventListener('pointercancel', up);
+    c.addEventListener('dblclick', () => this.resetView());
+    c.addEventListener('contextmenu', e => e.preventDefault());
+  }
+  _down(e){
+    if (e.pointerType === 'mouse' && e.button !== 0 && e.button !== 2) return;
+    const orbitOnly = e.pointerType === 'mouse' && e.button === 2;
+    try { this.canvas.setPointerCapture(e.pointerId); } catch (_) {}
+    this._settleView();
+    const d = this.drag = {id:e.pointerId, x:e.clientX, y:e.clientY, lx:e.clientX, ly:e.clientY, mode:'orbit', hit:null};
+    if (!orbitOnly && this.o.interactive && this.o.canTurn && this.o.canTurn()){
+      if (this.active || this.queue.length) this.finishAll();
+      const hit = this._pick(e);
+      if (hit){ d.mode = 'turn'; d.hit = hit; }
+    }
+  }
+  _move(e){
+    const d = this.drag;
+    if (!d || e.pointerId !== d.id) return;
+    if (d.mode === 'turn'){
+      const dx = e.clientX - d.x, dy = e.clientY - d.y;
+      if (dx * dx + dy * dy < 81) return;
+      d.mode = 'spent';
+      const m = this._dragMove(d.hit, dx, dy);
+      if (m && this.o.onUserMove) this.o.onUserMove(m);
+    } else if (d.mode === 'orbit'){
+      const k = 0.0085;
+      this.viewQ.multiply(qAxis('y', -(e.clientX - d.lx) * k)).multiply(qAxis('x', -(e.clientY - d.ly) * k)).normalize();
+      this._cam();
+    }
+    d.lx = e.clientX; d.ly = e.clientY;
+  }
+  _pick(e){
+    const r = this.canvas.getBoundingClientRect();
+    this.ndc.set((e.clientX - r.left) / r.width * 2 - 1, -(e.clientY - r.top) / r.height * 2 + 1);
+    this.ray.setFromCamera(this.ndc, this.camera);
+    for (const h of this.ray.intersectObjects(this.pickables, false)){
+      const obj = h.object, cubie = obj.parent;
+      let n;
+      if (obj.userData.face) n = obj.userData.normal.clone();
+      else if (h.face) n = h.face.normal.clone();
+      else continue;
+      n.applyQuaternion(cubie.quaternion);
+      n.set(Math.round(n.x), Math.round(n.y), Math.round(n.z));
+      if (Math.round(cubie.position.dot(n)) !== 1) continue;
+      return {point:h.point.clone(), normal:n, cubie};
+    }
+    return null;
+  }
+  _screen(v){
+    const p = v.clone().project(this.camera), r = this.canvas.getBoundingClientRect();
+    return {x:(p.x + 1) / 2 * r.width, y:(1 - p.y) / 2 * r.height};
+  }
+  _dragMove(hit, dx, dy){
+    const n = hit.normal, dl = Math.hypot(dx, dy), s0 = this._screen(hit.point);
+    let best = null;
+    for (const a of AXES){
+      if (Math.abs(n[a]) > 0.5) continue;
+      const dir = new THREE.Vector3(); dir[a] = 1;
+      const s1 = this._screen(hit.point.clone().addScaledVector(dir, 0.6));
+      const vx = s1.x - s0.x, vy = s1.y - s0.y, vl = Math.hypot(vx, vy);
+      if (vl < 1e-3) continue;
+      const cos = (dx * vx + dy * vy) / (dl * vl);
+      if (!best || Math.abs(cos) > Math.abs(best.cos)) best = {dir, cos};
+    }
+    if (!best) return null;
+    const t = best.dir.multiplyScalar(best.cos < 0 ? -1 : 1);
+    const w = new THREE.Vector3().crossVectors(n, t);
+    const axis = AXES.find(a => Math.abs(w[a]) > 0.5);
+    if (!axis) return null;
+    const layer = Math.round(hit.cubie.position[axis]);
+    return {axis, layer: layer === 0 ? 0 : layer, amt: w[axis] > 0 ? 1 : 3};
+  }
+  enqueue(m, opt){
+    opt = opt || {};
+    this.queue.push({m:{axis:m.axis, layer:m.layer, amt:m.amt}, dur: opt.duration == null ? 150 : opt.duration, source: opt.source || 'player', at: opt.at || now()});
+  }
+  cancelQueue(){ this.queue.length = 0; this.idleCbs = []; }
+  isIdle(){ return !this.active && !this.queue.length; }
+  afterQueue(fn){ if (this.isIdle()) fn(); else this.idleCbs.push(fn); }
+  _idle(){ if (!this.idleCbs.length) return; const cbs = this.idleCbs; this.idleCbs = []; cbs.forEach(f => f()); }
+  _begin(item, t){
+    const m = item.m, pivot = new THREE.Group();
+    this.root.add(pivot);
+    for (const c of this.cubies) if (Math.round(c.position[m.axis]) === m.layer) pivot.attach(c);
+    let dur = item.dur;
+    if (item.source === 'player' && this.queue.length >= 2) dur *= 0.45;
+    this.active = {item, m, pivot, angle:(m.amt === 3 ? -1 : m.amt) * Math.PI / 2, t0:t, dur};
+    pushSimplified(this.history, m);
+    if (this.o.onMoveStart) this.o.onMoveStart(m, item.source, item);
+  }
+  _complete(){
+    const a = this.active;
+    if (!a) return;
+    a.pivot.rotation[a.m.axis] = a.angle;
+    a.pivot.updateMatrixWorld(true);
+    for (const c of a.pivot.children.slice()){ this.root.attach(c); snap(c); }
+    this.root.remove(a.pivot);
+    this.active = null; this.dirty = true;
+    if (this.o.onMoveEnd) this.o.onMoveEnd(a.m, a.item.source, a.item);
+    if (this.isIdle()) this._idle();
+  }
+  finishAll(){
+    let g = 0;
+    while ((this.active || this.queue.length) && g++ < 3000){
+      if (!this.active) this._begin(this.queue.shift(), now());
+      this._complete();
+    }
+  }
+  reset(){
+    this.queue.length = 0; this.idleCbs = [];
+    if (this.active){ this.root.remove(this.active.pivot); this.active = null; }
+    for (const c of this.cubies) if (c.parent) c.parent.remove(c);
+    this._build();
+    this.history = [];
+    this.dirty = true;
+  }
+  analyze(){
+    const centers = {}, faces = {U:[], D:[], L:[], R:[], F:[], B:[]}, v = new THREE.Vector3();
+    for (const c of this.cubies){
+      const p = c.position;
+      const isCenter = Math.abs(Math.round(p.x)) + Math.abs(Math.round(p.y)) + Math.abs(Math.round(p.z)) === 1;
+      for (const s of c.children){
+        const f = s.userData.face;
+        if (!f) continue;
+        const d = dirOf(v.copy(s.userData.normal).applyQuaternion(c.quaternion));
+        faces[d].push(f);
+        if (isCenter) centers[d] = f;
+      }
+    }
+    let ok = 0;
+    for (const d in faces) for (const f of faces[d]) if (f === centers[d]) ok++;
+    return {pct:ok / 54, solved:ok === 54, centers};
+  }
+  tick(t){
+    let g = 0;
+    while (g++ < 400){
+      if (!this.active){ if (!this.queue.length) break; this._begin(this.queue.shift(), t); }
+      const a = this.active;
+      const p = a.dur > 0 ? Math.max(0, Math.min(1, (t - a.t0) / a.dur)) : 1;
+      a.pivot.rotation[a.m.axis] = a.angle * (1 - Math.pow(1 - p, 3));
+      this.dirty = true;
+      if (p < 1) break;
+      this._complete();
+    }
+    if (this.viewAnim){
+      const a = this.viewAnim, p = Math.max(0, Math.min(1, (t - a.t0) / a.dur));
+      this.viewQ.copy(a.from).slerp(a.to, 1 - Math.pow(1 - p, 3));
+      if (p >= 1){ this.viewQ.copy(a.to); this.viewAnim = null; }
+      this._cam();
+    }
+    if (this.spin){
+      const p = Math.max(0, Math.min(1, (t - this.spin.t0) / this.spin.dur));
+      const e = p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+      this.viewQ.copy(this.spin.from).multiply(qAxis('y', -Math.PI * 2 * e));
+      if (p >= 1){ this.viewQ.copy(this.spin.from); this.spin = null; }
+      this._cam();
+    }
+    if (this.dirty && this.host.clientWidth){ this.renderer.render(this.scene, this.camera); this.dirty = false; }
+  }
+}
+
+/* ───────── game ───────── */
+const LEVELS = [{n:3, label:'입문'}, {n:6, label:'쉬움'}, {n:12, label:'보통'}, {n:25, label:'완전'}];
+const DIFFS = {
+  easy:   {label:'쉬움',   lv:1, who:'큐브 초보 · 자주 헷갈려요',  interval:2600, mistake:0.5,  pauseP:0.4,  pause:[2500,6000], inspect:4000},
+  normal: {label:'보통',   lv:2, who:'취미 큐버 · 가끔 멈칫해요',  interval:1500, mistake:0.3,  pauseP:0.25, pause:[1200,3000], inspect:2500},
+  hard:   {label:'어려움', lv:3, who:'대회 참가자 · 빠르고 정확',  interval:750,  mistake:0.12, pauseP:0.15, pause:[500,1400],  inspect:1500},
+  master: {label:'마스터', lv:4, who:'세계 기록급 · 초당 3회전+', interval:280,  mistake:0,    pauseP:0.05, pause:[200,500],   inspect:700},
+};
+const TURN_MS = 150;
+const FACE_KO = {U:'윗면', D:'아랫면', L:'왼쪽면', R:'오른쪽면', F:'앞면', B:'뒷면'};
+
+const G = {mode:'solo', phase:'idle', levelIdx:1, diff:'normal', runLevel:1, runDiff:'normal',
+  moves:0, startAt:0, elapsed:0, clockOn:false, assisted:false, hintUsed:false, scramble:[], trail:[],
+  meTime:null, aiTime:null, result:null, aiMoves:0, aiToken:0, aiTimer:0, cdTimer:0, resTimer:0, meSolved:true};
+
+/* records (per-viewer, browser only) */
+const STORE_KEY = 'cube-timeattack:v1';
+const freshStore = () => ({best:{}, recent:[], battle:{easy:{w:0,l:0,best:null}, normal:{w:0,l:0,best:null}, hard:{w:0,l:0,best:null}, master:{w:0,l:0,best:null}}});
+let S = freshStore();
+try {
+  const raw = localStorage.getItem(STORE_KEY);
+  if (raw){
+    const d = JSON.parse(raw), f = freshStore();
+    S = {best: d.best || {}, recent: Array.isArray(d.recent) ? d.recent : [], battle: f.battle};
+    for (const k in f.battle) if (d.battle && d.battle[k]) S.battle[k] = Object.assign(f.battle[k], d.battle[k]);
+  }
+} catch (_) {}
+function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch (_) {} }
+
+let me = null, ai = null;
+const timerEl = $('timer'), ghostEl = $('ghost');
+let lastPaint = '';
+function paintTime(ms){
+  const t = fmt(ms);
+  if (t === lastPaint) return;
+  lastPaint = t; timerEl.textContent = t; ghostEl.textContent = t.replace(/\d/g, '8');
+}
+function startClock(){ G.startAt = now(); G.clockOn = true; }
+function stopClock(){ if (G.clockOn){ G.elapsed = now() - G.startAt; G.clockOn = false; paintTime(G.elapsed); } return G.elapsed; }
+function clearClock(){ G.clockOn = false; G.elapsed = 0; paintTime(0); }
+
+function setStatus(tone, label, text){
+  const s = $('status');
+  s.dataset.tone = tone; s.textContent = label;
+  $('statusText').textContent = text;
+  $('lcd').dataset.tone = tone;
+}
+function idleStatus(){
+  if (G.mode === 'solo') setStatus('idle', '대기', '섞기를 누르면 큐브가 무작위로 섞여요');
+  else setStatus('idle', '대기', '난이도와 섞기 강도를 고르고 대전을 시작하세요');
+}
+let toastTimer = 0;
+function toast(msg){
+  const t = $('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+function paintTrail(){
+  $('trail').innerHTML = G.trail.map((n, i) => `<span${i === G.trail.length - 1 ? ' class="last"' : ''}>${n}</span>`).join('');
+}
+function paintBar(barId, pctId, pct){
+  const p = Math.round(pct * 100);
+  const bar = $(barId);
+  bar.style.width = p + '%';
+  bar.style.setProperty('--full', (p ? 10000 / p : 100) + '%');
+  $(pctId).textContent = p + '%';
+}
+function paintMe(a){
+  G.meSolved = a.solved; G.centers = a.centers;
+  paintBar('meBar', 'mePct', a.pct);
+  paintPad();
+}
+/* chip on each pad button = color of the center currently on that side of the screen */
+const DIR_LETTER = {x:{'1':'R', '-1':'L'}, y:{'1':'U', '-1':'D'}, z:{'1':'F', '-1':'B'}};
+function paintPad(){
+  if (!me || !G.centers) return;
+  const map = me.getMap();
+  document.querySelectorAll('#pad button').forEach(b => {
+    const d = map[b.dataset.face], c = G.centers[DIR_LETTER[d.axis][d.sign]] || 'U';
+    b.style.setProperty('--chip', `var(--c-${c.toLowerCase()})`);
+  });
+}
+function paintAi(a){
+  paintBar('aiBar', 'aiPct', (a || ai.analyze()).pct);
+  $('aiMoves').textContent = G.aiMoves;
+}
+function setAiState(text, win){ const el = $('aiState'); el.textContent = text; el.classList.toggle('win', !!win); }
+
+function paintRecords(){
+  $('bests').innerHTML = LEVELS.map((L, i) =>
+    `<div class="best${i === G.levelIdx ? ' on' : ''}"><dt>${L.label}<span>${L.n}회</span></dt><dd>${fmt(S.best[L.n])}</dd></div>`).join('');
+  const L = LEVELS[G.levelIdx];
+  const pool = S.recent.filter(r => r.lvl === L.n && !r.hint).slice(0, 5).map(r => Number(r.t));
+  $('ao5Label').textContent = `${L.label} 최근 5회 평균 (ao5)`;
+  if (pool.length === 5){ const s = pool.slice().sort((a, b) => a - b); $('ao5').textContent = fmt((s[1] + s[2] + s[3]) / 3); }
+  else $('ao5').textContent = `${5 - pool.length}회 더 풀면 계산`;
+  const lvlLabel = n => { const l = LEVELS.find(x => x.n === n); return l ? l.label : n + '회'; };
+  $('recent').innerHTML = S.recent.length
+    ? S.recent.slice(0, 6).map(r => `<li><b>${fmt(Number(r.t))}</b><span>${lvlLabel(r.lvl)} · ${Number(r.moves) || 0}수${r.hint ? ' · <span class="tagh">힌트</span>' : ''}</span></li>`).join('')
+    : '<li class="empty">아직 기록이 없어요. 섞기를 누르고 첫 기록을 남겨 보세요.</li>';
+}
+function paintDiffs(){
+  document.querySelectorAll('#diffs .diff').forEach(b => {
+    const k = b.dataset.diff, r = S.battle[k];
+    b.setAttribute('aria-checked', String(k === G.diff));
+    b.querySelector('.wl').textContent = `${r.w}승 ${r.l}패` + (r.best != null ? ` · 최고 ${fmt(r.best)}` : '');
+  });
+  $('aiLabel').textContent = DIFFS[G.diff].label;
+}
+function renderControls(){
+  const p = G.phase, live = p === 'scrambling' || p === 'countdown' || p === 'running';
+  const prim = $('primary');
+  if (G.mode === 'solo'){
+    prim.textContent = (p === 'idle' || p === 'free') ? '섞기' : '다시 섞기';
+    prim.className = 'btn primary act';
+    prim.disabled = p === 'scrambling';
+    const noTools = p === 'scrambling' || p === 'solving';
+    $('btnSolve').disabled = noTools || (G.meSolved && me && me.isIdle());
+    $('btnHint').disabled = noTools || G.meSolved;
+    $('btnReset').disabled = p === 'scrambling';
+  } else {
+    prim.textContent = live ? (G.result === 'lose' ? '그만하기' : '포기') : (p === 'done' ? '한 판 더' : '대전 시작');
+    prim.className = 'btn act ' + (live ? 'danger' : 'primary');
+    prim.disabled = false;
+  }
+  const lock = G.mode === 'battle' ? live : p === 'scrambling';
+  document.querySelectorAll('#levels button').forEach(b => { b.disabled = lock; });
+  document.querySelectorAll('#diffs .diff').forEach(b => { b.disabled = live; });
+}
+
+/* result dialog */
+let resFn = null;
+function openResult(o){
+  $('resEyebrow').textContent = o.eyebrow;
+  $('resTitle').textContent = o.title;
+  $('result').dataset.tone = o.tone;
+  $('resTime').textContent = o.time;
+  const rows = $('resRows'); rows.innerHTML = '';
+  for (const [k, v] of o.rows){
+    const dt = document.createElement('dt'), dd = document.createElement('dd');
+    dt.textContent = k; dd.textContent = v; rows.append(dt, dd);
+  }
+  $('resPrimary').textContent = o.primary; resFn = o.fn;
+  $('result').hidden = false;
+  $('resPrimary').focus({preventScroll:true});
+}
+function showResultSoon(o){ clearTimeout(G.resTimer); G.resTimer = setTimeout(() => openResult(o), reduceMotion ? 200 : 1150); }
+function closeResult(){ clearTimeout(G.resTimer); $('result').hidden = true; }
+
+/* player input */
+function canTurn(){
+  if (!me) return false;
+  if (G.phase === 'scrambling' || G.phase === 'solving' || G.phase === 'countdown') return false;
+  if (!$('result').hidden) return false;
+  return true;
+}
+function playerMove(m){
+  if (!canTurn()) return;
+  if (G.phase === 'ready' && G.mode === 'solo'){
+    G.phase = 'running'; startClock();
+    setStatus('running', '측정 중', '완성하는 순간 시간이 멈춰요');
+  } else if (G.phase === 'idle' || G.phase === 'done'){
+    G.phase = 'free';
+    setStatus('free', '자유 회전', G.mode === 'solo' ? '시간은 재지 않아요 · 섞기를 누르면 기록 도전' : '연습 중 · 대전을 시작하면 새로 섞여요');
+  }
+  if (G.phase === 'running'){ G.moves++; $('meMoves').textContent = G.moves; }
+  me.enqueue(m, {duration:TURN_MS, source:'player', at:now()});
+  G.trail.push(worldToRel(me.getMap(), m)); if (G.trail.length > 16) G.trail.shift();
+  paintTrail(); renderControls();
+}
+function onMeEnd(m, source, item){
+  const a = me.analyze();
+  paintMe(a);
+  if (G.phase === 'running' && a.solved && source === 'player'){
+    me.cancelQueue(); me.history = [];
+    const t = Math.max(0, item.at - G.startAt);
+    if (G.mode === 'solo') finishSolo(t); else finishMeBattle(t);
+  } else if (a.solved && me.isIdle()){
+    me.history = [];
+    if (G.phase === 'free'){ G.phase = 'idle'; idleStatus(); }
+  }
+  renderControls();
+}
+
+/* solo */
+function scrambleSolo(){
+  if (G.phase === 'scrambling') return;
+  closeResult();
+  clearClock();
+  G.moves = 0; G.assisted = false; G.hintUsed = false; G.trail = []; G.runLevel = G.levelIdx;
+  $('meMoves').textContent = '0'; paintTrail();
+  me.reset();
+  const seq = makeScramble(LEVELS[G.levelIdx].n);
+  G.scramble = seq;
+  $('scrambleText').textContent = seq.map(moveName).join('  ');
+  G.phase = 'scrambling';
+  setStatus('busy', '섞는 중', `${LEVELS[G.levelIdx].n}번 무작위로 돌리는 중…`);
+  renderControls();
+  const d = reduceMotion ? 0 : 75;
+  seq.forEach(m => me.enqueue(m, {duration:d, source:'scramble'}));
+  me.afterQueue(() => {
+    if (G.phase !== 'scrambling') return;
+    G.phase = 'ready';
+    setStatus('ready', '준비', '첫 회전과 동시에 시간이 시작돼요');
+    renderControls();
+  });
+}
+function finishSolo(t){
+  G.clockOn = false; G.elapsed = t; paintTime(t);
+  G.phase = 'done';
+  const L = LEVELS[G.runLevel];
+  const prev = S.best[L.n];
+  const isBest = !G.hintUsed && (prev == null || t < prev);
+  if (isBest) S.best[L.n] = t;
+  S.recent.unshift({t:Math.round(t), moves:G.moves, lvl:L.n, hint:G.hintUsed, at:Date.now()});
+  S.recent = S.recent.slice(0, 20);
+  save(); paintRecords();
+  setStatus('done', '완성', isBest ? (prev == null ? '첫 기록을 남겼어요!' : '개인 최고 기록을 새로 썼어요!') : '완성! 다시 섞어서 기록을 줄여 보세요');
+  me.celebrate();
+  const rows = [['회전 수', `${G.moves}수`], ['초당 회전 (TPS)', (G.moves / Math.max(t / 1000, 0.01)).toFixed(2)], [`${L.label} 최고 기록`, fmt(S.best[L.n])]];
+  if (G.hintUsed) rows.push(['힌트', '사용함 · 최고 기록 제외']);
+  showResultSoon({eyebrow:`혼자 연습 · ${L.label} (${L.n}회 섞기)`, title: isBest && prev != null ? '새 기록!' : '완성!', tone:'win', time:fmt(t), rows, primary:'다시 섞기', fn:scrambleSolo});
+}
+function autoSolve(){
+  if (G.mode !== 'solo' || G.phase === 'scrambling' || G.phase === 'solving') return;
+  me.cancelQueue();
+  if (G.meSolved && !me.active){ toast('이미 완성된 상태예요'); return; }
+  const sol = solutionFrom(me.history);
+  const timed = G.phase === 'running' || G.phase === 'ready';
+  if (timed){ stopClock(); G.assisted = true; }
+  G.phase = 'solving';
+  setStatus('solving', '자동 완성', `${sol.length}수로 되돌리는 중…`);
+  renderControls();
+  const d = reduceMotion ? 30 : Math.max(70, Math.min(200, 5000 / Math.max(sol.length, 1)));
+  sol.forEach(m => me.enqueue(m, {duration:d, source:'solve'}));
+  me.afterQueue(() => {
+    G.phase = 'done'; me.history = [];
+    setStatus('done', '완성', timed ? '자동으로 완성했어요 · 이번 풀이는 기록하지 않아요' : '자동으로 완성했어요');
+    me.celebrate(); renderControls();
+  });
+}
+function hint(){
+  if (G.mode !== 'solo' || G.phase === 'scrambling' || G.phase === 'solving') return;
+  me.finishAll();
+  if (G.meSolved){ toast('이미 완성된 상태예요'); return; }
+  const next = solutionFrom(me.history)[0];
+  if (!next) return;
+  const name = worldToRel(me.getMap(), next);
+  if (G.phase === 'running' || G.phase === 'ready') G.hintUsed = true;
+  const btn = document.querySelector(`#pad button[data-move="${name[0]}${name[1] === "'" ? "'" : ''}"]`);
+  if (btn){ btn.classList.remove('hinted'); void btn.offsetWidth; btn.classList.add('hinted'); setTimeout(() => btn.classList.remove('hinted'), 2600); }
+  toast(`다음 수: ${name}${name[1] === '2' ? ' (같은 방향으로 두 번)' : ''}${G.hintUsed ? ' · 이번 풀이는 최고 기록에서 빠져요' : ''}`);
+}
+function resetSolo(){
+  closeResult(); me.reset(); clearClock();
+  G.phase = 'idle'; G.moves = 0; G.trail = []; G.scramble = [];
+  $('meMoves').textContent = '0'; $('scrambleText').textContent = '아직 섞지 않았어요';
+  paintTrail(); paintMe(me.analyze()); idleStatus(); renderControls();
+}
+
+/* battle */
+function battleEyebrow(){ const L = LEVELS[G.runLevel]; return `AI 대전 · ${DIFFS[G.runDiff].label} · ${L.label} (${L.n}회 섞기)`; }
+function stopAi(){ G.aiToken++; clearTimeout(G.aiTimer); }
+function buildAiPlan(solution, d){
+  const plan = [{type:'pause', ms:d.inspect, first:true}];
+  const faces = FACE_LIST.map(f => parseMove(f));
+  for (const m of solution){
+    if (Math.random() < d.pauseP) plan.push({type:'pause', ms:rand(d.pause[0], d.pause[1])});
+    if (Math.random() < d.mistake){
+      if (m.amt !== 2 && Math.random() < 0.55){
+        plan.push({type:'move', m:invert(m)}, {type:'pause', ms:d.interval * 0.8}, {type:'move', m}, {type:'move', m});
+      } else {
+        const others = faces.filter(f => keyOf(f) !== keyOf(m));
+        const y = Object.assign({}, others[Math.random() * others.length | 0]);
+        if (Math.random() < 0.5) y.amt = 4 - y.amt;
+        plan.push({type:'move', m:y}, {type:'pause', ms:d.interval * 0.6}, {type:'move', m:invert(y)}, {type:'move', m});
+      }
+    } else plan.push({type:'move', m});
+  }
+  return plan;
+}
+function startBattle(){
+  closeResult(); stopAi(); clearTimeout(G.cdTimer); $('countdown').hidden = true;
+  clearClock();
+  G.moves = 0; G.meTime = null; G.aiTime = null; G.result = null; G.aiMoves = 0; G.trail = [];
+  G.runLevel = G.levelIdx; G.runDiff = G.diff;
+  $('meMoves').textContent = '0'; paintTrail();
+  me.reset(); ai.reset();
+  const seq = makeScramble(LEVELS[G.levelIdx].n);
+  G.scramble = seq;
+  G.phase = 'scrambling';
+  setStatus('busy', '섞는 중', '두 큐브를 똑같이 섞고 있어요');
+  setAiState('섞는 중');
+  renderControls();
+  const d = reduceMotion ? 0 : 60;
+  seq.forEach(m => { me.enqueue(m, {duration:d, source:'scramble'}); ai.enqueue(m, {duration:d, source:'scramble'}); });
+  me.afterQueue(() => { if (G.phase === 'scrambling') runCountdown(); });
+}
+function runCountdown(){
+  G.phase = 'countdown';
+  setStatus('ready', '준비', '곧 시작해요 · 어디부터 돌릴지 살펴보세요');
+  setAiState('준비');
+  renderControls();
+  const el = $('countdown');
+  let n = 3;
+  const show = txt => { el.textContent = txt; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); };
+  el.hidden = false; show(n);
+  const step = () => {
+    if (G.phase !== 'countdown'){ el.hidden = true; return; }
+    n--;
+    if (n > 0){ show(n); G.cdTimer = setTimeout(step, 800); }
+    else { show('시작!'); beginRace(); G.cdTimer = setTimeout(() => { el.hidden = true; }, 650); }
+  };
+  G.cdTimer = setTimeout(step, 800);
+}
+function beginRace(){
+  G.phase = 'running'; startClock();
+  const d = DIFFS[G.runDiff];
+  setStatus('running', '대결 중', `AI(${d.label})와 같은 섞기로 대결 중 · 먼저 완성하면 승리`);
+  renderControls();
+  const plan = buildAiPlan(solutionFrom(G.scramble), d);
+  const token = ++G.aiToken;
+  let i = 0;
+  const step = () => {
+    if (token !== G.aiToken || G.phase !== 'running' || G.aiTime != null || i >= plan.length) return;
+    const a = plan[i++];
+    if (a.type === 'pause'){
+      setAiState(a.first ? '관찰 중' : '고민 중…');
+      G.aiTimer = setTimeout(step, a.ms);
+      return;
+    }
+    setAiState('돌리는 중');
+    ai.enqueue(a.m, {duration:Math.min(d.interval * 0.7, 240), source:'ai', at:now()});
+    G.aiTimer = setTimeout(step, d.interval * rand(0.7, 1.3));
+  };
+  step();
+}
+function onAiStart(m, source){ if (source === 'ai'){ G.aiMoves++; $('aiMoves').textContent = G.aiMoves; } }
+function onAiEnd(m, source, item){
+  const a = ai.analyze();
+  paintAi(a);
+  if (source === 'ai' && a.solved && G.mode === 'battle' && G.phase === 'running' && G.aiTime == null) aiFinished(Math.max(0, item.at - G.startAt));
+}
+function aiFinished(t){
+  G.aiTime = t; stopAi(); ai.celebrate();
+  setAiState(`완성 ${fmt(t)}`, true);
+  if (G.meTime == null){
+    G.result = 'lose';
+    S.battle[G.runDiff].l++; save(); paintDiffs();
+    setStatus('lose', 'AI 완성', `AI가 ${fmt(t)}초에 먼저 맞췄어요 · 끝까지 맞춰서 내 기록을 확인해 보세요`);
+    toast(`AI가 먼저 완성했어요 — ${fmt(t)}`);
+    renderControls();
+  }
+}
+function finishMeBattle(t){
+  G.meTime = t; G.clockOn = false; G.elapsed = t; paintTime(t);
+  me.celebrate();
+  const aiPct = Math.round(ai.analyze().pct * 100);
+  G.phase = 'done';
+  if (G.aiTime == null){
+    G.result = 'win'; stopAi(); ai.cancelQueue();
+    setAiState('멈춤');
+    const rec = S.battle[G.runDiff];
+    rec.w++;
+    const isBest = rec.best == null || t < rec.best;
+    if (isBest) rec.best = t;
+    save(); paintDiffs();
+    setStatus('win', '승리', `AI보다 먼저 완성했어요!${isBest ? ' 이 난이도 최고 승리 기록이에요.' : ''}`);
+    showResultSoon({eyebrow:battleEyebrow(), title:'승리!', tone:'win', time:fmt(t),
+      rows:[['내 회전 수', `${G.moves}수`], ['AI 완성도', `${aiPct}% (${G.aiMoves}수)`], ['이 난이도 최고 승리', fmt(rec.best)]],
+      primary:'한 판 더', fn:startBattle});
+  } else {
+    setStatus('lose', '패배', `AI보다 ${fmt(t - G.aiTime)}초 늦게 완성했어요`);
+    showResultSoon({eyebrow:battleEyebrow(), title:'아쉬운 패배', tone:'lose', time:fmt(t),
+      rows:[['AI 기록', fmt(G.aiTime)], ['차이', '+' + fmt(t - G.aiTime)], ['내 회전 수', `${G.moves}수`]],
+      primary:'한 판 더', fn:startBattle});
+  }
+  renderControls();
+}
+function giveUp(){
+  const was = G.phase;
+  stopAi(); clearTimeout(G.cdTimer); $('countdown').hidden = true;
+  me.cancelQueue(); ai.cancelQueue(); me.finishAll(); ai.finishAll();
+  if (was === 'running'){
+    const t = stopClock();
+    if (G.result == null){ G.result = 'lose'; S.battle[G.runDiff].l++; save(); paintDiffs(); }
+    G.phase = 'done';
+    const aiPct = Math.round(ai.analyze().pct * 100), mePct = Math.round(me.analyze().pct * 100);
+    if (G.aiTime == null) setAiState('멈춤');
+    setStatus('lose', '종료', G.aiTime != null ? '대결을 마쳤어요' : '기권했어요 · 패배로 기록돼요');
+    openResult({eyebrow:battleEyebrow(), title: G.aiTime != null ? '대결 종료' : '기권', tone:'lose', time:fmt(t),
+      rows:[['AI', G.aiTime != null ? `완성 ${fmt(G.aiTime)}` : `미완성 · ${aiPct}%`], ['내 완성도', `${mePct}%`], ['내 회전 수', `${G.moves}수`]],
+      primary:'한 판 더', fn:startBattle});
+  } else {
+    clearClock(); G.phase = 'idle'; idleStatus(); setAiState('대기');
+    toast('대전을 취소했어요');
+  }
+  renderControls();
+}
+
+/* mode */
+function setMode(mode){
+  if (mode === G.mode || !me) return;
+  const wasRunning = G.phase === 'running';
+  stopAi(); clearTimeout(G.cdTimer); $('countdown').hidden = true; closeResult();
+  G.mode = mode; $('app').dataset.mode = mode;
+  document.querySelectorAll('.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.mode === mode)));
+  me.reset(); ai.reset(); clearClock();
+  G.phase = 'idle'; G.moves = 0; G.trail = []; G.scramble = []; G.meTime = null; G.aiTime = null; G.result = null; G.aiMoves = 0;
+  $('meMoves').textContent = '0'; $('scrambleText').textContent = '아직 섞지 않았어요';
+  paintTrail(); paintMe(me.analyze()); paintAi(); setAiState('대기');
+  idleStatus(); renderControls();
+  if (wasRunning) toast('진행 중이던 풀이는 취소했어요');
+}
+
+/* build static UI */
+function buildUI(){
+  const pad = $('pad');
+  for (const suffix of ['', "'"]) for (const f of FACE_LIST){
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.move = f + suffix; b.dataset.face = f;
+    b.title = `${f}${suffix} · ${FACE_KO[f]} ${suffix ? '반시계' : '시계'} 방향`;
+    b.setAttribute('aria-label', b.title);
+    b.innerHTML = `<i class="chip" aria-hidden="true"></i><span>${f}${suffix ? '′' : ''}</span>`;
+    pad.appendChild(b);
+  }
+  pad.addEventListener('click', e => { const b = e.target.closest('button[data-move]'); if (b && me) playerMove(relToWorld(me.getMap(), b.dataset.move)); });
+  $('viewPad').addEventListener('click', e => {
+    const b = e.target.closest('button[data-turn]');
+    if (!b || !me) return;
+    if (b.dataset.turn === 'reset') me.resetView();
+    else me.turnView(b.dataset.turn[0], parseInt(b.dataset.turn.slice(1), 10));
+  });
+
+  const lv = $('levels');
+  LEVELS.forEach((L, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.setAttribute('role', 'radio'); b.id = 'level-' + L.n; b.dataset.level = i;
+    b.innerHTML = `<span>${L.label}</span><small>${L.n}회</small>`;
+    lv.appendChild(b);
+  });
+  lv.addEventListener('click', e => {
+    const b = e.target.closest('button[data-level]'); if (!b || b.disabled) return;
+    G.levelIdx = +b.dataset.level; paintLevels(); paintRecords();
+  });
+
+  const df = $('diffs');
+  for (const k in DIFFS){
+    const d = DIFFS[k], b = document.createElement('button');
+    b.type = 'button'; b.className = 'diff'; b.setAttribute('role', 'radio'); b.id = 'diff-' + k; b.dataset.diff = k;
+    b.innerHTML = `<span class="meter" aria-hidden="true">${[1,2,3,4].map(i => `<i${i <= d.lv ? ' class="on"' : ''}></i>`).join('')}</span><b>${d.label}</b><small>${d.who}</small><em class="wl"></em>`;
+    df.appendChild(b);
+  }
+  df.addEventListener('click', e => {
+    const b = e.target.closest('.diff'); if (!b || b.disabled) return;
+    G.diff = b.dataset.diff; paintDiffs();
+  });
+
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => setMode(b.dataset.mode)));
+  $('primary').addEventListener('click', () => {
+    if (!me) return;
+    if (G.mode === 'solo') return scrambleSolo();
+    if (G.phase === 'scrambling' || G.phase === 'countdown' || G.phase === 'running') giveUp(); else startBattle();
+  });
+  $('btnSolve').addEventListener('click', () => { if (me) autoSolve(); });
+  $('btnHint').addEventListener('click', () => { if (me) hint(); });
+  $('btnReset').addEventListener('click', () => { if (me) resetSolo(); });
+  document.querySelectorAll('.view-reset').forEach(b => b.addEventListener('click', () => (b.dataset.view === 'ai' ? ai : me).resetView()));
+  $('resClose').addEventListener('click', closeResult);
+  $('resPrimary').addEventListener('click', () => { const f = resFn; closeResult(); if (f) f(); });
+  $('result').addEventListener('click', e => { if (e.target === $('result')) closeResult(); });
+
+  const CODE = {KeyU:'U', KeyD:'D', KeyL:'L', KeyR:'R', KeyF:'F', KeyB:'B', KeyM:'M', KeyE:'E', KeyS:'S'};
+  /* [axis, dir] in cube-rotation notation: ← = y, → = y', ↑ = x, ↓ = x' */
+  const VIEW_CODE = {ArrowLeft:['y', 1], ArrowRight:['y', -1], ArrowUp:['x', 1], ArrowDown:['x', -1], KeyX:['x', 1], KeyY:['y', 1], KeyZ:['z', 1]};
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !$('result').hidden){ closeResult(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')) return;
+    if (!me || !$('result').hidden) return;
+    const v = VIEW_CODE[e.code];
+    if (v){
+      e.preventDefault();
+      me.turnView(v[0], v[1] * (e.shiftKey && e.code.startsWith('Key') ? -1 : 1));
+      return;
+    }
+    if (e.code === 'KeyV' || e.code === 'Digit0' || e.code === 'Numpad0'){ e.preventDefault(); me.resetView(); return; }
+    const f = CODE[e.code];
+    if (!f || e.repeat) return;
+    e.preventDefault();
+    playerMove(relToWorld(me.getMap(), f + (e.shiftKey ? "'" : '')));
+  });
+}
+function paintLevels(){
+  document.querySelectorAll('#levels button').forEach(b => b.setAttribute('aria-checked', String(+b.dataset.level === G.levelIdx)));
+}
+
+function frame(t){
+  for (const v of VIEWS) v.tick(t);
+  if (G.clockOn) paintTime(t - G.startAt);
+  requestAnimationFrame(frame);
+}
+function fail(){
+  $('stages').innerHTML = '<div class="fail">3D 화면을 불러오지 못했어요. 페이지를 새로고침하거나 WebGL을 지원하는 브라우저에서 열어 주세요.</div>';
+}
+function boot(data){
+  data = data || {};
+  if (Number.isInteger(data.levelIdx) && LEVELS[data.levelIdx]) G.levelIdx = data.levelIdx;
+  if (data.diff && DIFFS[data.diff]) G.diff = data.diff;
+  buildUI();
+  paintLevels(); paintDiffs(); paintRecords();
+  if (typeof THREE === 'undefined'){ fail(); return; }
+  try {
+    me = new CubeView($('host-me'), {interactive:true, canTurn, onUserMove:playerMove, onMoveEnd:onMeEnd, onViewMap:() => paintPad()});
+    ai = new CubeView($('host-ai'), {interactive:false, onMoveStart:onAiStart, onMoveEnd:onAiEnd});
+  } catch (err){ fail(); return; }
+  paintMe(me.analyze()); paintAi();
+  idleStatus(); renderControls();
+  if (data.mode === 'battle') setMode('battle');
+  requestAnimationFrame(frame);
+}
+
+const hot = window.claude && window.claude.hot;
+try { if (hot && typeof hot.snapshot === 'function') hot.snapshot(() => ({mode:G.mode, levelIdx:G.levelIdx, diff:G.diff})); } catch (_) {}
+if (hot && typeof hot.ready === 'function') hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
+
+</html>
